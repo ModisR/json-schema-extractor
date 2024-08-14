@@ -8,7 +8,6 @@ object Main extends App {
   stream.close()
 
   private val spec = json.as[ApiSpec]
-  println(spec.roots)
 
   for {
     (name, schema) <- spec.schemas
