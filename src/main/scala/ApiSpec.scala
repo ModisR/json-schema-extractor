@@ -1,8 +1,17 @@
-import play.api.libs.json.{JsObject, JsString, Reads, __}
+import ApiSpec.requireAllPropertiesOf
+import play.api.libs.json._
 
 import scala.annotation.tailrec
 
-final case class ApiSpec (schemas: Map[String, JsObject])
+final case class ApiSpec (schemas: Map[String, JsObject]) {
+
+  def withAllPropertiesRequired: ApiSpec = copy(
+    schemas
+      .view
+      .mapValues(requireAllPropertiesOf)
+      .toMap
+  )
+}
 
 object ApiSpec {
 
@@ -40,7 +49,6 @@ object ApiSpec {
     }
   )
 
-
   private def resolveDependenciesFor(startNode: Node, directedGraph: DirectedGraph) = {
     @tailrec
     def impl(resolvedNodes: Set[Node], unresolvedNodes: Set[Node]): Set[Node] =
@@ -67,6 +75,14 @@ object ApiSpec {
           .toSet
       )
       .toMap
+
+  private def requireAllPropertiesOf(schema: JsObject) =
+    schema \ "properties" match {
+      case JsDefined(jsObject: JsObject) =>
+        val required = Json toJson jsObject.keys
+        schema + ("required" -> required)
+      case _ => schema
+    }
 
   private lazy val refPattern = s"#$schemaPath/([a-zA-Z0-9_]+)".r
   private lazy val schemaPath = __ \ "components" \ "schemas"
