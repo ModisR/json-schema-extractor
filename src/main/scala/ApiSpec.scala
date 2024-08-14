@@ -6,40 +6,33 @@ final case class ApiSpec (schemas: Map[String, JsObject]) {
 
   def withSchemasEmbedded: ApiSpec = copy (
     schemaDependencyGraph
-      .rootNodes
-      .map { node =>
-        val schema = schemas(node)
-        val dependencyNames = schemaDependencyGraph.flattened.nodes(node)
+      .flattened
+      .nodes
+      .map { case (rootNode, dependencyNodes) =>
+        val rootSchema = schemas(rootNode)
 
-        val dependencySchemas = dependencyNames
-          .map(name => name -> schemas(name) )
+        val dependencySchemas = dependencyNodes
+          .map(node => node -> schemas(node) )
           .toMap
 
         val dependencyJson = SCHEMA_PATH.write[Map[String, JsObject]].writes(dependencySchemas)
-        node -> (schema ++ dependencyJson)
+        rootNode -> (rootSchema ++ dependencyJson)
       }
-      .toMap
   )
 
   def withAllPropertiesRequired: ApiSpec = copy(
     schemas
       .view
-      .mapValues(requireAllPropertiesOf)
+      .mapValues(makeAllPropertiesRequired)
       .toMap
   )
 
   private lazy val schemaDependencyGraph: DirectedGraph = DirectedGraph(
     schemas
       .view
-      .mapValues( schema =>
-        (schema \\ "$ref")
-          .collect { case JsString(refPattern(dep)) => dep }
-          .toSet
-      )
+      .mapValues(getAllRefs)
       .toMap
   )
-
-  private lazy val refPattern = s"#$SCHEMA_PATH/([a-zA-Z0-9_]+)".r
 }
 
 object ApiSpec {
@@ -47,13 +40,19 @@ object ApiSpec {
   implicit val reads: Reads[ApiSpec] =
     SCHEMA_PATH.read[Map[String, JsObject]] map apply
 
+  private lazy val REF_PATTERN = s"#$SCHEMA_PATH/([a-zA-Z0-9_]+)".r
   private lazy val SCHEMA_PATH = __ \ "components" \ "schemas"
 
-  private def requireAllPropertiesOf(schema: JsObject) =
+  private def makeAllPropertiesRequired(schema: JsObject) =
     schema \ "properties" match {
       case JsDefined(jsObject: JsObject) =>
         val required = Json toJson jsObject.keys
         schema + ("required" -> required)
       case _ => schema
     }
+
+  private def getAllRefs(schema: JsObject) =
+    (schema \\ "$ref")
+      .collect { case JsString(REF_PATTERN(dep)) => dep }
+      .toSet
 }

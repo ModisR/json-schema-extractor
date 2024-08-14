@@ -11,7 +11,7 @@ final case class DirectedGraph (nodes: Map[Node, Set[Node]]) {
       .withDefaultValue(Set.empty)
   )
 
-  lazy val rootNodes: Set[Node] = {
+  private lazy val rootNodes = {
     val nonRootNodes = nodes.flatMap(_._2).toSet
     nodes.keySet diff nonRootNodes
   }
