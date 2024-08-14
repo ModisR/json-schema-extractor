@@ -1,3 +1,5 @@
 .bsp
 .idea
 target
+
+src/main/resources/*.json

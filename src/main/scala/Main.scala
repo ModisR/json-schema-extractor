@@ -7,8 +7,11 @@ object Main extends App {
   private val json = Json parse stream
   stream.close()
 
+  private val spec = json.as[ApiSpec]
+  println(spec.roots)
+
   for {
-    (name, schema) <- json.as[ApiSpec].schemas
+    (name, schema) <- spec.schemas
   } {
     val pw = new PrintWriter(s"$name.schema.json")
     pw.write(Json prettyPrint schema)
