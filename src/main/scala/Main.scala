@@ -7,7 +7,10 @@ object Main extends App {
   private val json = Json parse stream
   stream.close()
 
-  private val spec = json.as[ApiSpec].withAllPropertiesRequired
+  private val spec = json
+    .as[ApiSpec]
+    .withAllPropertiesRequired
+    .withSchemasEmbedded
 
   for {
     (name, schema) <- spec.schemas
